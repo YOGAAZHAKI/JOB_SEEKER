@@ -13,13 +13,21 @@ export const Hero = () => {
   };
 
   return (
-    <section className="relative overflow-hidden bg-gradient-hero py-20 md:py-32">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }} />
-      </div>
+    <section className="relative overflow-hidden bg-premium-hero py-24 md:py-36 lg:py-40">
+      {/* Animated Mesh Background */}
+      <div className="absolute inset-0 bg-gradient-mesh opacity-60" />
+      
+      {/* Premium Grid Pattern */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: `linear-gradient(hsl(0 0% 100%) 1px, transparent 1px),
+                          linear-gradient(90deg, hsl(0 0% 100%) 1px, transparent 1px)`,
+        backgroundSize: '60px 60px',
+      }} />
+
+      {/* Floating Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/10 rounded-full blur-[120px] animate-pulse-slow" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/20 rounded-full blur-[100px] animate-pulse-slow" style={{ animationDelay: '2s' }} />
+      <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-accent/15 rounded-full blur-[80px] animate-pulse-slow" style={{ animationDelay: '4s' }} />
 
       <div className="container relative">
         <div className="mx-auto max-w-4xl text-center">
@@ -117,15 +125,15 @@ export const Hero = () => {
               ].map((step, i) => (
                 <div
                   key={i}
-                  className="glass rounded-2xl p-6 shadow-xl animate-float"
-                  style={{ animationDelay: `${i * 0.2}s` }}
+                  className="glass-premium rounded-2xl p-6 animate-float"
+                  style={{ animationDelay: `${i * 0.3}s` }}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-accent">
-                      <step.icon className="h-6 w-6 text-accent-foreground" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-accent shadow-lg">
+                      <step.icon className="h-7 w-7 text-accent-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-foreground">{step.title}</h3>
+                      <h3 className="font-semibold text-foreground text-lg">{step.title}</h3>
                       <p className="text-sm text-muted-foreground">{step.desc}</p>
                     </div>
                   </div>
