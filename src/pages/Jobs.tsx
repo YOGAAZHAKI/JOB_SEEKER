@@ -2,15 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { ExternalJobCard } from '@/components/jobs/ExternalJobCard';
 import { JobCard } from '@/components/jobs/JobCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, Loader2, Sparkles, Globe, Building2, BrainCircuit, Code2, Database, Cloud, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
+import { fetchExternalJobs, enrichJobsWithMatchScore, type ExternalJob, type JobCategory } from '@/lib/api/jobsApi';
 
-interface Job {
+interface LocalJob {
   id: string;
   title: string;
   company: string;
@@ -23,30 +26,42 @@ interface Job {
   created_at: string;
 }
 
+const categoryInfo: Record<JobCategory, { label: string; icon: React.ElementType; color: string }> = {
+  'machine-learning': { label: 'Machine Learning', icon: BrainCircuit, color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
+  'full-stack': { label: 'Full Stack', icon: Code2, color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+  'frontend': { label: 'Frontend', icon: Code2, color: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20' },
+  'backend': { label: 'Backend', icon: Database, color: 'bg-green-500/10 text-green-600 border-green-500/20' },
+  'data-science': { label: 'Data Science', icon: BarChart3, color: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
+  'devops': { label: 'DevOps', icon: Cloud, color: 'bg-pink-500/10 text-pink-600 border-pink-500/20' },
+};
+
 const Jobs = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [localJobs, setLocalJobs] = useState<LocalJob[]>([]);
+  const [externalJobs, setExternalJobs] = useState<ExternalJob[]>([]);
   const [applications, setApplications] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingLocal, setLoadingLocal] = useState(true);
+  const [loadingExternal, setLoadingExternal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [jobTypeFilter, setJobTypeFilter] = useState('all');
   const [locationFilter, setLocationFilter] = useState('');
-  const [showInternships, setShowInternships] = useState<boolean | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<JobCategory>('machine-learning');
+  const [userSkills, setUserSkills] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState('external');
 
   useEffect(() => {
-    fetchJobs();
+    fetchLocalJobs();
     if (user) {
       fetchApplications();
+      fetchUserSkills();
     }
   }, [user]);
 
   useEffect(() => {
-    filterJobs();
-  }, [jobs, searchQuery, jobTypeFilter, locationFilter, showInternships]);
+    fetchExternalJobsData();
+  }, [selectedCategory, locationFilter]);
 
-  const fetchJobs = async () => {
+  const fetchLocalJobs = async () => {
     try {
       const { data, error } = await supabase
         .from('jobs')
@@ -55,11 +70,42 @@ const Jobs = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setJobs(data || []);
+      setLocalJobs(data || []);
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      console.error('Error fetching local jobs:', error);
     } finally {
-      setLoading(false);
+      setLoadingLocal(false);
+    }
+  };
+
+  const fetchUserSkills = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('resumes')
+      .select('extracted_skills')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (data?.extracted_skills) {
+      setUserSkills(data.extracted_skills);
+    }
+  };
+
+  const fetchExternalJobsData = async () => {
+    setLoadingExternal(true);
+    try {
+      const { jobs } = await fetchExternalJobs(selectedCategory, locationFilter);
+      const enrichedJobs = userSkills.length > 0 
+        ? enrichJobsWithMatchScore(jobs, userSkills)
+        : jobs;
+      setExternalJobs(enrichedJobs);
+    } catch (error) {
+      console.error('Error fetching external jobs:', error);
+      toast.error('Failed to load external jobs. Please check API key configuration.');
+    } finally {
+      setLoadingExternal(false);
     }
   };
 
@@ -75,37 +121,7 @@ const Jobs = () => {
     }
   };
 
-  const filterJobs = () => {
-    let filtered = [...jobs];
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (job) =>
-          job.title.toLowerCase().includes(query) ||
-          job.company.toLowerCase().includes(query) ||
-          job.required_skills.some((s) => s.toLowerCase().includes(query))
-      );
-    }
-
-    if (jobTypeFilter !== 'all') {
-      filtered = filtered.filter((job) => job.job_type === jobTypeFilter);
-    }
-
-    if (locationFilter) {
-      filtered = filtered.filter((job) =>
-        job.location.toLowerCase().includes(locationFilter.toLowerCase())
-      );
-    }
-
-    if (showInternships !== null) {
-      filtered = filtered.filter((job) => job.is_internship === showInternships);
-    }
-
-    setFilteredJobs(filtered);
-  };
-
-  const handleApply = async (jobId: string) => {
+  const handleApplyLocal = async (jobId: string) => {
     if (!user) {
       navigate('/login');
       return;
@@ -133,21 +149,67 @@ const Jobs = () => {
     }
   };
 
-  const uniqueLocations = [...new Set(jobs.map((j) => j.location))];
+  const handleApplyExternal = (job: ExternalJob) => {
+    window.open(job.source_url, '_blank');
+    toast.success('Redirecting to job application...');
+  };
+
+  const filteredLocalJobs = localJobs.filter((job) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      job.title.toLowerCase().includes(query) ||
+      job.company.toLowerCase().includes(query) ||
+      job.required_skills.some((s) => s.toLowerCase().includes(query))
+    );
+  });
+
+  const filteredExternalJobs = externalJobs.filter((job) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      job.title.toLowerCase().includes(query) ||
+      job.company.toLowerCase().includes(query) ||
+      job.required_skills.some((s) => s.toLowerCase().includes(query))
+    );
+  });
 
   return (
     <div className="min-h-screen bg-muted/30">
       <div className="container py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Browse Jobs</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Sparkles className="h-8 w-8 text-accent" />
+            Browse Jobs
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Find your perfect job or internship opportunity
+            Real-time job listings from 70+ job boards including Indeed, Glassdoor, LinkedIn & more
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="bg-card rounded-xl p-4 mb-8 shadow-sm">
+        {/* Category Filter - Prominent */}
+        <div className="bg-card rounded-xl p-4 mb-6 shadow-sm border">
+          <p className="text-sm font-medium text-muted-foreground mb-3">Select Category</p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(categoryInfo) as JobCategory[]).map((cat) => {
+              const { label, icon: Icon, color } = categoryInfo[cat];
+              return (
+                <Button
+                  key={cat}
+                  variant={selectedCategory === cat ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={selectedCategory === cat ? 'bg-accent text-accent-foreground' : color}
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Search and Location */}
+        <div className="bg-card rounded-xl p-4 mb-8 shadow-sm border">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -158,78 +220,98 @@ const Jobs = () => {
                 className="pl-9"
               />
             </div>
-            <Select value={jobTypeFilter} onValueChange={setJobTypeFilter}>
-              <SelectTrigger className="w-full md:w-[150px]">
-                <SelectValue placeholder="Job Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="full-time">Full-time</SelectItem>
-                <SelectItem value="part-time">Part-time</SelectItem>
-                <SelectItem value="contract">Contract</SelectItem>
-                <SelectItem value="remote">Remote</SelectItem>
-                <SelectItem value="hybrid">Hybrid</SelectItem>
-              </SelectContent>
-            </Select>
             <Input
-              placeholder="Location"
+              placeholder="Location (e.g., San Francisco, Remote)"
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="w-full md:w-[150px]"
+              className="w-full md:w-[250px]"
             />
+            <Button 
+              onClick={fetchExternalJobsData}
+              disabled={loadingExternal}
+              className="bg-accent hover:bg-accent/90"
+            >
+              {loadingExternal ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              <span className="ml-2">Search</span>
+            </Button>
           </div>
-          <div className="flex gap-2 mt-4">
-            <Badge
-              variant={showInternships === null ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => setShowInternships(null)}
-            >
-              All
-            </Badge>
-            <Badge
-              variant={showInternships === false ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => setShowInternships(false)}
-            >
-              Jobs
-            </Badge>
-            <Badge
-              variant={showInternships === true ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => setShowInternships(true)}
-            >
-              Internships
-            </Badge>
-          </div>
+          {userSkills.length > 0 && (
+            <div className="mt-4 p-3 bg-success/10 rounded-lg border border-success/20">
+              <p className="text-sm text-success flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Jobs are ranked by skill match based on your resume ({userSkills.length} skills detected)
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Results */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-accent" />
-          </div>
-        ) : filteredJobs.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No jobs found matching your criteria</p>
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-muted-foreground mb-4">
-              {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} found
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredJobs.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  applied={applications.includes(job.id)}
-                  onApply={handleApply}
-                  onViewDetails={(id) => navigate(`/jobs/${id}`)}
-                />
-              ))}
-            </div>
-          </>
-        )}
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="external" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              External Jobs ({filteredExternalJobs.length})
+            </TabsTrigger>
+            <TabsTrigger value="local" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Our Platform ({filteredLocalJobs.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* External Jobs Tab */}
+          <TabsContent value="external">
+            {loadingExternal ? (
+              <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                <p className="text-muted-foreground">Fetching {categoryInfo[selectedCategory].label} jobs...</p>
+              </div>
+            ) : filteredExternalJobs.length === 0 ? (
+              <div className="text-center py-12 bg-card rounded-xl border">
+                <Globe className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No external jobs found</p>
+                <p className="text-sm text-muted-foreground mt-1">Try a different category or location</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredExternalJobs.map((job) => (
+                  <ExternalJobCard
+                    key={job.id}
+                    job={job}
+                    onApply={() => handleApplyExternal(job)}
+                    showMatchInfo={userSkills.length > 0}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Local Jobs Tab */}
+          <TabsContent value="local">
+            {loadingLocal ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-accent" />
+              </div>
+            ) : filteredLocalJobs.length === 0 ? (
+              <div className="text-center py-12 bg-card rounded-xl border">
+                <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No jobs posted on our platform yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Recruiters can post jobs from their dashboard</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredLocalJobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    applied={applications.includes(job.id)}
+                    onApply={handleApplyLocal}
+                    onViewDetails={(id) => navigate(`/jobs/${id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
