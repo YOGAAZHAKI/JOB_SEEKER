@@ -31,27 +31,20 @@ export const Hero = () => {
 
       <div className="container relative">
         <div className="mx-auto max-w-4xl text-center">
-          <motion.div {...fadeInUp}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent-foreground mb-6">
-              <TrendingUp className="h-4 w-4 text-accent" />
-              AI-Powered Career Intelligence
-            </span>
-          </motion.div>
-
           <motion.h1
             {...fadeInUp}
             transition={{ delay: 0.1, duration: 0.6 }}
             className="text-4xl font-bold tracking-tight text-primary-foreground md:text-6xl lg:text-7xl"
           >
-            Bridge Your{' '}
+            Turn Your{' '}
             <span className="relative">
-              <span className="relative z-10 text-accent">Skills Gap</span>
+              <span className="relative z-10 text-accent">Resume</span>
               <svg className="absolute -bottom-2 left-0 w-full" height="12" viewBox="0 0 200 12" fill="none">
                 <path d="M2 8C50 2 150 2 198 8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="text-accent/40" />
               </svg>
             </span>
             <br />
-            Land Your Dream Job
+            Into Career Insights
           </motion.h1>
 
           <motion.p
@@ -78,11 +71,10 @@ export const Hero = () => {
             </Button>
             <Button
               size="lg"
-              variant="outline"
               onClick={() => navigate('/jobs')}
-              className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 min-w-[200px] h-12 text-base"
+              className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-glow min-w-[200px] h-12 text-base"
             >
-              <Search className="mr-2 h-5 w-5" />
+              <Search className="ml-2 h-5 w-5" />
               Browse Jobs
             </Button>
           </motion.div>

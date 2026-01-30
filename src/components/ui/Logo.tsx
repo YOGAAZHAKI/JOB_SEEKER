@@ -9,9 +9,9 @@ interface LogoProps {
 
 export const Logo = ({ variant = 'default', size = 'md', showText = true }: LogoProps) => {
   const sizeClasses = {
-    sm: 'h-6 w-6',
-    md: 'h-8 w-8',
-    lg: 'h-10 w-10',
+    sm: 'h-14 w-14',
+    md: 'h-16 w-16',
+    lg: 'h-18 w-18',
   };
 
   const textSizeClasses = {
@@ -24,12 +24,11 @@ export const Logo = ({ variant = 'default', size = 'md', showText = true }: Logo
     <div className="flex items-center gap-2">
       <div
         className={cn(
-          'relative flex items-center justify-center rounded-xl bg-gradient-accent p-2',
+          'relative flex items-center justify-center rounded-xl p-2',
           sizeClasses[size]
         )}
       >
-        <Briefcase className="h-4 w-4 text-accent-foreground" />
-        <TrendingUp className="absolute -right-1 -top-1 h-3 w-3 text-accent" />
+        <img src="/fav.png" alt="Logo" className="h-full w-full object-contain" />
       </div>
       {showText && (
         <span

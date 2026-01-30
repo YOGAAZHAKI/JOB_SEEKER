@@ -53,12 +53,6 @@ export const Navbar = () => {
           >
             Browse Jobs
           </Link>
-          <Link
-            to="/about"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            How It Works
-          </Link>
 
           {loading ? (
             <div className="h-10 w-24 animate-pulse rounded-lg bg-muted" />

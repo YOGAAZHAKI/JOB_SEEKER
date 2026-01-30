@@ -30,6 +30,7 @@ export const ExternalJobCard = ({ job, onApply, showMatchInfo = false }: Externa
   };
 
   return (
+    <>
     <Card className="group hover:shadow-lg transition-all duration-300 hover:border-accent/50 relative overflow-hidden">
       {/* External indicator */}
       <div className="absolute top-0 right-0 bg-info/10 text-info text-xs px-2 py-1 rounded-bl-lg flex items-center gap-1">
@@ -118,5 +119,6 @@ export const ExternalJobCard = ({ job, onApply, showMatchInfo = false }: Externa
         </Button>
       </CardContent>
     </Card>
+    </>
   );
 };

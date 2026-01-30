@@ -55,6 +55,7 @@ export const JobCard = ({ job, onApply, onViewDetails, showMatchInfo = false, ap
   };
 
   return (
+    <>
     <Card className="group hover:shadow-lg transition-all duration-300 hover:border-accent/50">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
@@ -154,5 +155,6 @@ export const JobCard = ({ job, onApply, onViewDetails, showMatchInfo = false, ap
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };
