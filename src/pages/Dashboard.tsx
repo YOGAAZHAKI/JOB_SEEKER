@@ -179,6 +179,9 @@ const Dashboard = () => {
     setResumes([newResume, ...resumes]);
     setSelectedResume(newResume);
     fetchData();
+    
+    // Navigate to jobs page after successful upload
+    navigate('/jobs');
   };
 
   const handleApply = async (jobId: string) => {
